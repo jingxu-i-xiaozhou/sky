@@ -1,20 +1,29 @@
 package com.sky.controller.admin;
 
+import com.github.pagehelper.Page;
 import com.sky.constant.JwtClaimsConstant;
+import com.sky.constant.PasswordConstant;
+import com.sky.constant.StatusConstant;
+import com.sky.context.BaseContext;
+import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
+import com.sky.dto.EmployeePageQueryDTO;
 import com.sky.entity.Employee;
 import com.sky.properties.JwtProperties;
+import com.sky.result.PageResult;
 import com.sky.result.Result;
 import com.sky.service.EmployeeService;
 import com.sky.utils.JwtUtil;
 import com.sky.vo.EmployeeLoginVO;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.DigestUtils;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,6 +37,7 @@ public class EmployeeController {
 
     @Autowired
     private EmployeeService employeeService;
+
     @Autowired
     private JwtProperties jwtProperties;
 
@@ -71,4 +81,51 @@ public class EmployeeController {
         return Result.success();
     }
 
+    @PostMapping
+    @ApiOperation("新增员工")
+    public Result insertEmp(@RequestBody EmployeeDTO employeeDTO) {
+        employeeService.insertEmp(employeeDTO);
+        return Result.success();
+    }
+
+    @GetMapping("/page")
+    public Result<PageResult> page(EmployeePageQueryDTO employeePageQueryDTO){
+        PageResult pageResult = employeeService.pageQuery(employeePageQueryDTO);
+        return Result.success(pageResult);
+    }
+
+    @PostMapping("/status/{status}")
+    public Result update(@PathVariable Integer status , Long id){
+        Employee employee = Employee.builder()
+                .status(status)
+                .id(id)
+                .build();
+        employeeService.update(employee);
+        return Result.success();
+    }
+
+    @GetMapping("/{id}")
+    public Result<Employee> selectEmpById(@PathVariable Long id){
+        Employee employee = employeeService.selectEmpById(id);
+        employee.setPassword("#&*^");
+        return Result.success(employee);
+    }
+
+    @PutMapping
+    public Result updateEmpInfo(@RequestBody EmployeeDTO employeeDTO){
+        Employee employee = new Employee();
+
+        BeanUtils.copyProperties(employeeDTO,employee);
+        employee.setStatus(StatusConstant.ENABLE);
+        employee.setPassword(DigestUtils.md5DigestAsHex(PasswordConstant.DEFAULT_PASSWORD.getBytes()));
+        employee.setCreateTime(LocalDateTime.now());
+        employee.setUpdateTime(LocalDateTime.now());
+
+        Long currentId = BaseContext.getCurrentId();
+        employee.setCreateUser(currentId);
+        employee.setUpdateUser(currentId);
+
+        employeeService.update(employee);
+        return Result.success();
+    }
 }
